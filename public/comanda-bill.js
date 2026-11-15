@@ -5,14 +5,16 @@
  function receiptItems(items){
  const borderInfo=i=>String(i.nome_produto||'').match(/^Borda de (.*?) — (.*?) \((Kids|Tradicional)[^)]*\)$/i);
  const borders=items.filter(i=>borderInfo(i)),used=new Set(),lines=[];
- for(const i of items){if(borderInfo(i))continue;
+ const comboBorder=i=>String(i.nome_produto||'').match(/^Bordas\s*[—–-]\s*(.+)$/i);
+ for(const i of items){if(borderInfo(i))continue;if(comboBorder(i)&&items.some(parent=>parent.nome_produto===comboBorder(i)[1]))continue;
   const attached=borders.filter(b=>!used.has(b)&&((b.configuracao?.produto_origem&&b.configuracao.produto_origem===i.produto_id)||(!b.configuracao?.produto_origem&&borderInfo(b)[2]===i.nome_produto&&Number(b.quantidade)===Number(i.quantidade))));
   const category=i.produtos?.categorias?.nome||i.categoria_nome||attached.map(b=>borderInfo(b)[3])[0]||'';
   const size=/kids/i.test(category)?'Kids':/tradicional/i.test(category)?'Tradicional':'';
   const name=String(i.nome_produto)+(size&&!/\((Kids|Tradicional)\)| - (Kids|Tradicional)$/i.test(i.nome_produto)?' - '+size:'');
   lines.push(row(i.quantidade+'x '+name,money(i.subtotal),'receipt-item'));
   const note=String(i.observacoes||'').replace(/(?:^|\n)Borda de [^\n]+/g,'').trim();
-  if(note)lines.push('<div class="receipt-item-note">'+esc(note)+'</div>');
+  if(note&&!comboBorder(i))lines.push('<div class="receipt-item-note">'+esc(note)+'</div>');
+  for(const b of items.filter(b=>comboBorder(b)&&comboBorder(b)[1]===i.nome_produto&&!used.has(b))){used.add(b);lines.push(row(b.quantidade+'x Bordas do combo',money(b.subtotal),'receipt-item'));}
   for(const b of attached){used.add(b);lines.push(row(b.quantidade+'x Borda '+borderInfo(b)[1],money(b.subtotal),'receipt-item'));}
  }
  for(const b of borders)if(!used.has(b))lines.push(row(b.quantidade+'x Borda '+borderInfo(b)[1],money(b.subtotal),'receipt-item'));
